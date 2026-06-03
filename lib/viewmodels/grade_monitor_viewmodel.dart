@@ -1,0 +1,63 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/grade_monitor_service.dart';
+import '../services/notification_service.dart';
+
+class GradeMonitorViewModel extends ChangeNotifier {
+  bool _isMonitoring = false;
+  GradeMonitorService? _service;
+  Timer? _timer;
+
+  bool get isMonitoring => _isMonitoring;
+
+  String get toggleLabel => _isMonitoring ? "Спри следенето" : "Следи оценките";
+
+  Future<void> toggle() async {
+    if (_isMonitoring) {
+      await stopService();
+      _isMonitoring = false;
+    } else {
+      bool started = await startService();
+      if (started) {
+        _isMonitoring = true;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<bool> startService() async {
+    final prefs = await SharedPreferences.getInstance();
+    String fnum = prefs.getString("fnum") ?? "";
+    String egn = prefs.getString("egn") ?? "";
+
+    if (fnum.isEmpty || egn.isEmpty) {
+      return false;
+    }
+
+    _service = GradeMonitorService(fnum: fnum, egn: egn);
+    
+    // Initial check
+    await _service?.checkOnce();
+    
+    // Run every 30 minutes (or as appropriate)
+    _timer = Timer.periodic(const Duration(minutes: 30), (timer) {
+      _service?.checkOnce();
+    });
+
+    return true;
+  }
+
+  Future<void> stopService() async {
+    _timer?.cancel();
+    _timer = null;
+    _service = null;
+    await NotificationService.cancel(GradeMonitorService.persistentNotifId);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
