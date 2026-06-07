@@ -2,9 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse response) {
+  debugPrint('BACKGROUND ACTION: ${response.actionId}');
+
+  final service = FlutterBackgroundService();
+
+  if (response.actionId == 'check_now') {
+    service.invoke('checkNow');
+  } else if (response.actionId == 'stop_monitoring') {
+    service.invoke('stopService');
+  }
+}
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin();
 
   static bool _isInitialized = false;
 
@@ -12,21 +25,27 @@ class NotificationService {
     if (_isInitialized) return;
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/icon');
+    AndroidInitializationSettings('@mipmap/icon');
 
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    InitializationSettings(android: initializationSettingsAndroid);
 
     try {
       await _notificationsPlugin.initialize(
         settings: initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) async {
+          debugPrint('FOREGROUND ACTION: ${response.actionId}');
+
+          final service = FlutterBackgroundService();
+
           if (response.actionId == 'check_now') {
-            FlutterBackgroundService().invoke('checkNow');
+            service.invoke('checkNow');
           } else if (response.actionId == 'stop_monitoring') {
-            FlutterBackgroundService().invoke('stopService');
+            service.invoke('stopService');
           }
         },
+        onDidReceiveBackgroundNotificationResponse:
+        notificationTapBackground,
       ).timeout(const Duration(seconds: 3));
 
       final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -40,7 +59,7 @@ class NotificationService {
           enableVibration: false,
           playSound: false,
         ));
-        
+
         await androidPlugin.createNotificationChannel(const AndroidNotificationChannel(
           'grade_alert_channel',
           'Нови оценки',
@@ -71,7 +90,7 @@ class NotificationService {
 
   static Future<void> showPersistent(int id, String title, String body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
+    AndroidNotificationDetails(
       'grade_monitor_channel',
       'Следене на оценки',
       channelDescription: 'Показва текущия статус на следенето',
@@ -84,12 +103,12 @@ class NotificationService {
         AndroidNotificationAction(
           'check_now',
           'Провери сега',
-          showsUserInterface: false,
+          showsUserInterface: true,
         ),
         AndroidNotificationAction(
           'stop_monitoring',
           'Спри',
-          showsUserInterface: false,
+          showsUserInterface: true,
         ),
       ],
     );
@@ -104,7 +123,7 @@ class NotificationService {
 
   static Future<void> showAlert(int id, String title, String body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
+    AndroidNotificationDetails(
       'grade_alert_channel',
       'Нови оценки',
       channelDescription: 'Известия за нови оценки',
