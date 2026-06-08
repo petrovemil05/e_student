@@ -100,16 +100,16 @@ class NotificationService {
       autoCancel: false,
       showWhen: true,
       actions: [
-        AndroidNotificationAction(
-          'check_now',
-          'Провери сега',
-          showsUserInterface: true,
-        ),
-        AndroidNotificationAction(
-          'stop_monitoring',
-          'Спри',
-          showsUserInterface: true,
-        ),
+        // AndroidNotificationAction(
+        //   'check_now',
+        //   'Провери сега',
+        //   showsUserInterface: true,
+        // ),
+        // AndroidNotificationAction(
+        //   'stop_monitoring',
+        //   'Спри',
+        //   showsUserInterface: true,
+        // ),
       ],
     );
 
