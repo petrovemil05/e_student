@@ -5,6 +5,8 @@ import '../models/grade_item.dart';
 import '../services/grades_parser.dart';
 import '../services/tu_api_service.dart';
 import '../services/notification_service.dart';
+import '../services/update_service.dart';
+import '../ui/update_dialog.dart';
 import '../viewmodels/grade_monitor_viewmodel.dart';
 
 class MainPage extends StatefulWidget {
@@ -30,6 +32,14 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     _checkLogin();
     NotificationService.requestPermissions();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateInfo = await UpdateService.checkForUpdate();
+    if (updateInfo != null && mounted) {
+      UpdateDialog.show(context, updateInfo);
+    }
   }
 
   Future<void> _checkLogin() async {
