@@ -163,7 +163,7 @@ class GradesParser {
         final match = gradeValuePattern.firstMatch(item.grade);
         if (match != null) {
           final val = double.parse(match.group(1)!);
-          if (val >= 3) numericGrades.add(val);
+          if (val >= 2) numericGrades.add(val);
           // (2) grades — whether редовна or failed поправка — are excluded
         }
       }

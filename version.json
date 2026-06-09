@@ -1,1 +1,1 @@
-{ "version": "1.0.4", "build": 4, "description": "Updated location of version.json file", "apk_url": "https://github.com/petrovemil05/e_student/releases/download/v1.0.4%2B4/app-arm64-v8a-release.apk" }
+{ "version": "1.0.5", "build": 5, "description": "Fixed average calculations (now includes Poor 2)", "apk_url": "https://github.com/petrovemil05/e_student/releases/download/v1.0.5%2B5/app-arm64-v8a-release.apk" }
