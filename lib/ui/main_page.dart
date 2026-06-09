@@ -270,7 +270,7 @@ class _MainPageState extends State<MainPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text("Login", style: TextStyle(color: Colors.white)),
+                child: const Text("Вход", style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
