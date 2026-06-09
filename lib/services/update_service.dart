@@ -78,12 +78,18 @@ class UpdateService {
 
       final dio = Dio();
       final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-      final savePath = '${dir.path}/app-update.apk';
+      final savePath = '${dir.path}/app-arm64-v8a-release.apk';
 
       // Delete old file if exists
       final file = File(savePath);
       if (await file.exists()) {
         await file.delete();
+      } else {
+        final savePath = '${dir.path}/app-update.apk';
+        final file = File(savePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
 
       await dio.download(

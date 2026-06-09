@@ -11,6 +11,67 @@ class AverageResult {
 class GradesParser {
   final unescape = HtmlUnescape();
 
+  String _colorForGrade(String gradeText) {
+    if (gradeText.contains("Няма оценка")) return "Blue";
+    if (gradeText.contains("Зачита се") || gradeText.contains("(6)")) return "Green";
+    if (gradeText.contains("(5)")) return "Cyan";
+    if (gradeText.contains("(4)")) return "Yellow";
+    if (gradeText.contains("(3)")) return "Orange";
+    if (gradeText.contains("(2)")) return "Red";
+    return "White";
+  }
+
+  /// Extracts just the human name + numeric grade, e.g. "Добър (4)".
+  /// Strips the trailing type tag like "(редовна)", "(поправителна)", etc.
+  String _extractLabel(String entry) {
+    // entry looks like: "Добър (4) (редовна), по протокол …"
+    // We want everything up to and including the numeric "(N)" part.
+    final match = RegExp(r'^(.+?\(\d\))').firstMatch(entry);
+    return match != null ? match.group(1)!.trim() : entry.trim();
+  }
+
+  GradeItem _buildGradeItem(String subject, String block) {
+    final headerMatch = RegExp(
+      r'oценк[аи]:<br>\s*',
+      caseSensitive: false,
+    ).firstMatch(block);
+
+    if (headerMatch == null) {
+      return GradeItem(subject: subject, grade: "Няма оценка", color: "Blue");
+    }
+
+    final afterHeader = block.substring(headerMatch.end);
+    final closingItalic = afterHeader.indexOf('</i>');
+    final gradeSection = closingItalic != -1
+        ? afterHeader.substring(0, closingItalic)
+        : afterHeader;
+
+    // Capture each entry: "Name (N) (тип)" — everything before ", по протокол"
+    final entries = RegExp(r'([^\n<]+?\(\d\)\s*\([^)]+\))', caseSensitive: false)
+        .allMatches(gradeSection)
+        .map((m) => unescape.convert(m.group(1)!).trim())
+        .toList();
+
+    if (entries.isEmpty) {
+      return GradeItem(subject: subject, grade: "Няма оценка", color: "Blue");
+    }
+
+    final lastEntry = entries.last;
+    final isPoravka = lastEntry.contains("поправителна") ||
+        lastEntry.contains("ликвидационна");
+
+    final label = _extractLabel(lastEntry);
+    final displayGrade = isPoravka
+        ? "${label.length > 3 ? label.substring(3) : ''} (П)"
+        : label;
+
+    return GradeItem(
+      subject: subject,
+      grade: displayGrade,
+      color: _colorForGrade(lastEntry),
+    );
+  }
+
   List<GradeItem> parse(String html) {
     List<GradeItem> grades = [];
 
@@ -20,13 +81,13 @@ class GradesParser {
       multiLine: true,
     );
 
-    final matches = pattern.allMatches(html);
+    final matches = pattern.allMatches(html).toList();
 
-    for (var m in matches) {
-      String? semesterGroup = m.namedGroup('semester');
-      String? subjectGroup = m.namedGroup('subject');
+    for (int i = 0; i < matches.length; i++) {
+      final m = matches[i];
+      final String? semesterGroup = m.namedGroup('semester');
+      final String? subjectGroup = m.namedGroup('subject');
 
-      // SEMESTER
       if (semesterGroup != null && semesterGroup.isNotEmpty) {
         grades.add(GradeItem(
           grade: "== ${semesterGroup.trim()} ==",
@@ -36,55 +97,16 @@ class GradesParser {
         continue;
       }
 
-      // SUBJECT
       if (subjectGroup != null) {
-        String subject = unescape.convert(subjectGroup).trim();
-
-        int start = m.start;
-        String remainingHtml = html.substring(m.end);
-
-        final nextMatch = RegExp(
-          r'<span[^>]*><b>|<td colspan=4><center><b>',
-          caseSensitive: false,
-        ).firstMatch(remainingHtml);
-
-        int end = nextMatch != null ? m.end + nextMatch.start : html.length;
-
-        String block = html.substring(start, end);
-
-        final gradeMatch = RegExp(
-          r'oценк[аи]:<br>\s*([^<]+?\(\d\))',
-          caseSensitive: false,
-        ).firstMatch(block);
-
-        String grade = gradeMatch != null
-            ? unescape.convert(gradeMatch.group(1)!).trim()
-            : "Няма оценка";
-
-        // COLOR RULES
-        String color = "White";
-        if (grade.contains("Няма оценка")) {
-          color = "Blue";
-        } else if (grade.contains("Зачита се") || grade.contains("(6)")) {
-          color = "Green";
-        } else if (grade.contains("(5)")) {
-          color = "Cyan";
-        } else if (grade.contains("(4)")) {
-          color = "Yellow";
-        } else if (grade.contains("(3)")) {
-          color = "Orange";
-        } else if (grade.contains("(2)")) {
-          color = "Red";
-        }
-
-        grades.add(GradeItem(
-          subject: subject,
-          grade: grade,
-          color: color,
-        ));
+        final subject = unescape.convert(subjectGroup).trim();
+        final int blockEnd =
+        (i + 1 < matches.length) ? matches[i + 1].start : html.length;
+        final String block = html.substring(m.start, blockEnd);
+        grades.add(_buildGradeItem(subject, block));
       }
     }
 
+    // Reverse semester groups so latest appears first
     List<List<GradeItem>> groups = [];
     List<GradeItem>? currentGroup;
 
@@ -97,9 +119,8 @@ class GradesParser {
       }
     }
 
-    var reversedGroups = groups.reversed.toList();
     List<GradeItem> finalList = [];
-    for (var g in reversedGroups) {
+    for (var g in groups.reversed) {
       finalList.addAll(g);
     }
 
@@ -124,26 +145,29 @@ class GradesParser {
       }
     }
 
-    List<Map<String, dynamic>> validSemesters = [];
     final gradeValuePattern = RegExp(r'\((\d)\)');
+    List<Map<String, dynamic>> validSemesters = [];
 
     for (var sem in semesters) {
       List<double> numericGrades = [];
-      List<GradeItem> items = sem['grades'];
+      List<GradeItem> items = sem['grades'] as List<GradeItem>;
+
       for (var item in items) {
-        if (item.grade.contains("Няма оценка") || item.grade.contains("Зачита се")) {
+        if (item.grade.contains("Няма оценка") ||
+            item.grade.contains("Зачита се")) {
           continue;
         }
-        
-        var match = gradeValuePattern.firstMatch(item.grade);
+
+        // grade is now like "Добър (4)" or "Добър (4) (П)"
+        // gradeValuePattern picks up the first (N) which is always the numeric grade
+        final match = gradeValuePattern.firstMatch(item.grade);
         if (match != null) {
-          double val = double.parse(match.group(1)!);
-          if (val > 1) { 
-            numericGrades.add(val);
-          }
+          final val = double.parse(match.group(1)!);
+          if (val >= 3) numericGrades.add(val);
+          // (2) grades — whether редовна or failed поправка — are excluded
         }
       }
-      
+
       if (numericGrades.isNotEmpty) {
         validSemesters.add({
           'label': sem['label'],
@@ -167,7 +191,7 @@ class GradesParser {
 
     if (gradesToAverage.isEmpty) return null;
 
-    double sum = gradesToAverage.reduce((a, b) => a + b);
+    final sum = gradesToAverage.reduce((a, b) => a + b);
     return AverageResult(
       average: sum / gradesToAverage.length,
       semesterLabels: labelsUsed,

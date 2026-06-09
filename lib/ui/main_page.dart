@@ -44,8 +44,8 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _checkLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    String fnum = prefs.getString("fnum") ?? "";
-    String egn = prefs.getString("egn") ?? "";
+    final fnum = prefs.getString("fnum") ?? "";
+    final egn = prefs.getString("egn") ?? "";
 
     if (fnum.isNotEmpty && egn.isNotEmpty) {
       setState(() {
@@ -58,8 +58,8 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _onLoginClicked() async {
-    String fnum = _fnumController.text;
-    String egn = _egnController.text;
+    final fnum = _fnumController.text;
+    final egn = _egnController.text;
 
     if (fnum.isEmpty || egn.isEmpty) return;
 
@@ -94,11 +94,11 @@ class _MainPageState extends State<MainPage> {
     });
 
     try {
-      String html = await _api.getHtmlAsync(
+      final html = await _api.getHtmlAsync(
         _fnumController.text,
         _egnController.text,
       );
-      var result = _parser.parse(html);
+      final result = _parser.parse(html);
       setState(() {
         _grades = result;
         _averageResult = _parser.calculateAverage(result);
@@ -317,7 +317,6 @@ class _MainPageState extends State<MainPage> {
               ],
             ),
             const SizedBox(height: 10),
-            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -378,52 +377,47 @@ class _MainPageState extends State<MainPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: item.isSemester
+                ? Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF333333),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.grade,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 16),
+                ),
+              ),
+            )
+                : Row(
               children: [
-                if (item.isSemester)
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF333333),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          item.grade,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else ...[
-                  Expanded(
-                    child: Text(
-                      item.subject,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                Expanded(
+                  child: Text(
+                    item.subject,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 16),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF333333),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.grade,
+                    style: TextStyle(
+                      color: _getGradeColor(item.color),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF333333),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.grade,
-                      style: TextStyle(
-                        color: _getGradeColor(item.color),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
